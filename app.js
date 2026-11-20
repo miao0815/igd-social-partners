@@ -124,7 +124,17 @@ async function setup(){
  if(old){await new Promise(resolve=>{card('发现上次任务的本地记录',`<p>编号：${esc(old.participant_id)}；状态：${esc(old.status)}；已记录${old.trials?.length||0}试次。</p><p>请先下载备份。若为中断任务，请联系研究人员，不要自行重复；本程序不接着旧试次续跑。</p><button id="old-download">下载上次记录</button><button id="old-clear" disabled>已备份，清除本地记录并进入新任务</button>`);document.getElementById('old-download').onclick=()=>{download(JSON.stringify(old),old.session_id+'_recovered.json');document.getElementById('old-clear').disabled=false;};document.getElementById('old-clear').onclick=()=>{localStorage.removeItem(key);resolve();};});}
  if(mode!=='demo'&&(!C.collectionEnabled||!C.dataPipeExperimentId||!C.consentText.trim())){card('正式入口尚未开放','<p>研究人员正在配置数据保存和线上参与说明。请暂勿开始正式实验。</p><p>仅检查流程可使用短版演示。</p><a class="button" href="?mode=demo">短版演示</a>');return;}
  const mobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- if(mobile||innerWidth<900||innerHeight<600){card('请使用电脑参加','<p>本任务需要实体键盘 E、I 和空格键，请使用台式机或笔记本电脑，将浏览器窗口放大后重新打开。手机和平板不支持。</p>');return;}
+ if(mobile){card('当前浏览器被识别为手机或平板','<p>请使用电脑和实体键盘。如果正在使用电脑，请关闭浏览器开发者工具中的手机模拟模式，然后刷新。</p><p class="minor">设备检测版本：20261120-b</p>');return;}
+ if(innerWidth<900||innerHeight<600){
+  await new Promise(resolve=>{
+   card('浏览器显示区域不足',`<p>当前可用区域：<strong id="viewport-size"></strong>；要求至少900 × 600。此提示不代表您使用的是手机。</p><p>请点击全屏按钮；如果仍不足，按 Ctrl＋减号缩小网页，再点击重新检测。</p><button id="device-full">全屏并重新检测</button><button id="device-recheck">重新检测</button><p id="device-error" class="error"></p><p class="minor">设备检测版本：20261120-b</p>`);
+   const update=()=>{document.getElementById('viewport-size').textContent=`${innerWidth} × ${innerHeight}`;};
+   const check=()=>{update();if(innerWidth>=900&&innerHeight>=600){window.removeEventListener('resize',update);resolve();}else{document.getElementById('device-error').textContent='显示区域仍不足，请缩小网页或调整系统显示缩放后重试。';}};
+   update();window.addEventListener('resize',update);
+   document.getElementById('device-recheck').onclick=check;
+   document.getElementById('device-full').onclick=async()=>{try{await full();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));check();}catch(e){document.getElementById('device-error').textContent=e.message+' 也可以按 F11，再点击重新检测。';}};
+  });
+ }
  card('词语分类任务',`<p>${mode==='demo'?'短版演示 · 128试次 · 不上传数据':mode==='pilot'?'完整预测试 · 384试次':'正式任务 · 384试次'}</p><div class="consent">${esc(mode==='demo'?'本演示用于检查操作流程，不作为正式实验数据。按键和反应时间保存在当前浏览器，可在结束后下载。请不要输入姓名或联系方式。':C.consentText)}</div><form id="entry"><label>匿名被试编号</label><input name="pid" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" required autocomplete="off" placeholder="例如 001"><p class="minor">填写研究人员提供的编号，与问卷一致；保留开头的0。不要填写手机号或姓名。</p><label class="check"><input type="checkbox" required>我已阅读说明，并自愿参与本次任务。</label><label class="check"><input type="checkbox" required>我正在使用电脑和实体键盘，能够清楚阅读中文。</label><button type="submit">确认并进入任务</button><button type="button" id="decline">不参与</button><p id="error" class="error"></p></form>`);
  const entry=document.getElementById('entry');if(/^\d{1,8}$/.test(params.get('id')||''))entry.elements.pid.value=params.get('id');
  document.getElementById('decline').onclick=()=>card('已退出','<p>您可以关闭页面。没有上传任何作答数据。</p>');
